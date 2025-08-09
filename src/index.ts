@@ -1,10 +1,11 @@
+import './polyfill';
 import { existsSync } from "fs";
 import { writeFile } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
 import { initConfig, initDir } from "./utils";
 import { createServer } from "./server";
-import { router } from "./utils/router";
+import { dynamicRouterMiddleware } from "./utils/dynamicRouterMiddleware";
 import { apiKeyAuth } from "./middleware/auth";
 import {
   cleanupPidFile,
@@ -106,7 +107,7 @@ async function run(options: RunOptions = {}) {
   });
   server.addHook("preHandler", async (req, reply) => {
     if(req.url.startsWith("/v1/messages")) {
-      router(req, reply, config)
+      await dynamicRouterMiddleware(req, reply, config)
     }
   });
   server.start();

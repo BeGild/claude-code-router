@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './polyfill';
 import { run } from "./index";
 import { showStatus } from "./utils/status";
 import { executeCodeCommand } from "./utils/codeCommand";
@@ -15,23 +16,40 @@ import { join } from "path";
 
 const command = process.argv[2];
 
+import { UIEnhancer } from './utils/uiEnhancer'; // 导入 UIEnhancer 类
+import { EnhancedRouterCli } from './utils/EnhancedRouterCli'; // 导入新的CLI类
+
+const ui = new UIEnhancer(); // 在此处实例化 uiEnhancer
+
 const HELP_TEXT = `
-Usage: ccr [command]
+${ui.createTitle('🚦 Claude Code Router Command Guide', 60)}
 
-Commands:
-  start         Start server 
-  stop          Stop server
-  restart       Restart server
-  status        Show server status
-  code          Execute claude command
-  ui            Open the web UI in browser
-  -v, version   Show version information
-  -h, help      Show help information
+${ui.separator('🎯 Quick Commands', 60)}
+${ui.createTable([
+  [ui.color('Command', 'cyan'), ui.color('Description', 'blue'), ui.color('Example', 'green')],
+  ['start', '启动路由服务', 'ccr start'],
+  ['stop', '停止路由服务', 'ccr stop'],
+  ['restart', '重启路由服务', 'ccr restart'],
+  ['status', '查看服务状态', 'ccr status'],
+  ['code', '执行Claude指令', 'ccr code "Write a function"'],
+  ['ui', '打开Web界面', 'ccr ui'],
+  ['router', '管理路由组', 'ccr router'],
+  ['-v', '显示版本信息', 'ccr -v'],
+  ['-h', '显示帮助信息', 'ccr -h']
+], { padding: 1 })}
 
-Example:
-  ccr start
-  ccr code "Write a Hello World"
-  ccr ui
+${ui.separator('🚀 Usage Examples', 60)}
+${ui.listItem(ui.color('ccr start', 'green') + ' - 启动Claude Code Router服务')}
+${ui.listItem(ui.color('ccr code "optimize this code"', 'cyan') + ' - 通过路由发送Claude请求')}
+${ui.listItem(ui.color('ccr status', 'blue') + ' - 查看当前服务运行状态')}
+${ui.listItem(ui.color('ccr ui', 'magenta') + ' - 在浏览器中打开Web管理界面')}
+${ui.listItem(ui.color('ccr router', 'yellow') + ' - 交互式管理路由组配置')}
+
+${ui.separator('📋 Connection Info', 60)}
+${ui.color('✨ 路由器默认运行在', 'gray')} ${ui.color('http://localhost:3456', 'cyan')}
+${ui.color('📄 配置文件位于:', 'gray')} ${ui.color('~/.claude-code-router/config.json', 'green')}
+
+${ui.border('└', '─', '┘', 60)}
 `;
 
 async function waitForService(
@@ -51,6 +69,48 @@ async function waitForService(
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   return false;
+}
+
+async function handleRouterCommand(): Promise<void> {
+  // Check if service is running
+  if (!isServiceRunning()) {
+    console.log("Service not running. Please start the service first with 'ccr start'");
+    console.log("Router group switching requires the service to be running.");
+    process.exit(1);
+  }
+
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { getServiceInfo } = await import("./utils/processCheck");
+    const { initConfig } = await import("./utils");
+    const { getTempAPIKey } = await import("./utils/systemUUID");
+
+    // Get service info
+    const serviceInfo = await getServiceInfo();
+    
+    // Read config to get proper API key, same as start command
+    let apiKey = "";
+    try {
+      const config = await initConfig();
+      apiKey = config.APIKEY || "fallback-router-key";
+    } catch (error: any) {
+      // Fallback to temporary API key only if no config key available
+      try {
+        apiKey = await getTempAPIKey();
+      } catch (uuidError: any) {
+        console.warn("Warning: No API key in config and failed to generate temporary API key, using fallback");
+        apiKey = "fallback-router-key";
+      }
+    }
+
+    // Create API-based CLI and run
+    const cli = new EnhancedRouterCli(serviceInfo.endpoint, apiKey);
+    await cli.run();
+
+  } catch (error: any) {
+    console.error("Failed to initialize router group CLI:", error.message);
+    process.exit(1);
+  }
 }
 
 async function main() {
@@ -216,20 +276,25 @@ async function main() {
       // Get service info and open UI
       const serviceInfo = await getServiceInfo();
       
-      // Generate temporary API key based on system UUID
+      // Generate temporary API key based on system UUID or use configured one
       let tempApiKey = "";
       try {
-        const { getTempAPIKey } = require("./utils");
-        tempApiKey = await getTempAPIKey();
+        const { initConfig } = require("./utils");
+        const config = await initConfig();
+        tempApiKey = config.APIKEY || "ui-fallback-key";
       } catch (error: any) {
-        console.warn("Warning: Failed to generate temporary API key:", error.message);
-        console.warn("Continuing without temporary API key...");
+        // Fallback to temporary API key only if no config key available
+        try {
+          const { getTempAPIKey } = require("./utils/systemUUID");
+          tempApiKey = await getTempAPIKey();
+        } catch (uuidError: any) {
+          console.warn("Warning: No API key in config and failed to generate temporary API key, using fallback");
+          tempApiKey = "ui-fallback-key";
+        }
       }
       
-      // Add temporary API key as URL parameter if successfully generated
-      const uiUrl = tempApiKey 
-        ? `${serviceInfo.endpoint}/ui/?tempApiKey=${tempApiKey}`
-        : `${serviceInfo.endpoint}/ui/`;
+      // Add API key as URL parameter
+      const uiUrl = `${serviceInfo.endpoint}/ui/?tempApiKey=${tempApiKey}`;
       
       console.log(`Opening UI at ${uiUrl}`);
 
@@ -257,6 +322,9 @@ async function main() {
           process.exit(1);
         }
       });
+      break;
+    case "router":
+      await handleRouterCommand();
       break;
     case "-v":
     case "version":

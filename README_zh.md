@@ -10,6 +10,12 @@
 -   **多提供商支持**: 支持 OpenRouter、DeepSeek、Ollama、Gemini、Volcengine 和 SiliconFlow 等各种模型提供商。
 -   **请求/响应转换**: 使用转换器为不同的提供商自定义请求和响应。
 -   **动态模型切换**: 在 Claude Code 中使用 `/model` 命令动态切换模型。
+-   **🔥 热配置重载**: 无需重启服务即可更新配置 - 更改会自动生效！
+-   **📋 版本管理**: 跟踪配置变更，支持自动版本控制和回滚功能。
+-   **🛡️ 智能验证**: 全面的配置验证，包含提供商连接性测试。
+-   **⚡ 零停机更新**: 无缝应用配置更改，服务不中断。
+-   **🔄 动态路由组**: 在运行时在不同的路由配置之间切换，无需重启服务。
+-   **🎛️ 交互式路由管理**: 通过CLI界面或REST API管理路由组。
 -   **GitHub Actions 集成**: 在您的 GitHub 工作流程中触发 Claude Code 任务。
 -   **插件系统**: 使用自定义转换器扩展功能。
 -   **Anthropic 直通**: 支持原始 Anthropic API 格式的直接透传，提供完整的流式体验。
@@ -464,6 +470,200 @@ jobs:
 ```
 
 这种设置可以实现有趣的自动化，例如在非高峰时段运行任务以降低 API 成本。
+
+## 🔥 动态配置更新
+
+Claude Code Router 现在支持**热配置重载** - 无需重启服务即可更新配置！这个强大的功能包括：
+
+### 核心特性
+
+- **🔄 自动文件监听**: 自动检测 `config.json` 的变化并在500毫秒内应用
+- **🛡️ 智能验证**: 在应用之前验证新配置，防止无效设置
+- **📋 版本管理**: 自动版本控制，支持回滚功能（保留最近10个版本）
+- **⚡ 零停机时间**: 配置更新不会中断正在进行的请求
+- **🔍 健康监控**: 持续监控提供商连接性和配置健康状态
+
+### 快速示例
+
+1. **编辑配置文件** (`~/.claude-code-router/config.json`)：
+   ```json
+   {
+     "Providers": [
+       {
+         "name": "newprovider",
+         "api_base_url": "https://api.example.com/v1/chat/completions",
+         "api_key": "sk-your-new-key",
+         "models": ["new-model"]
+       }
+     ],
+     "Router": {
+       "default": "newprovider,new-model"
+     }
+   }
+   ```
+
+2. **保存文件** - 更改会自动检测并应用！
+
+3. **检查状态**：
+   ```bash
+   curl -H "Authorization: Bearer your-secret-key" \
+        http://localhost:3456/api/config/status
+   ```
+
+### API 端点
+
+- `GET /api/config/status` - 获取路由器状态和版本信息
+- `POST /api/config/hot-reload` - 手动触发配置重载
+- `POST /api/config/validate` - 验证配置但不应用
+- `GET /api/config/versions` - 查看配置版本历史
+- `POST /api/config/rollback` - 回滚到之前的版本
+- `GET /api/config/diff/:from/:to` - 比较配置版本差异
+
+### 测试
+
+运行包含的测试套件来验证动态路由功能：
+
+```bash
+node examples/dynamic-router-test.js
+```
+
+详细文档请参阅 [DYNAMIC_ROUTER.md](DYNAMIC_ROUTER.md)。
+
+## 🔄 动态路由组
+
+路由组功能允许您在运行时在不同的路由配置之间切换，而无需重启服务。您可以预配置多个路由策略（如默认组、性能组、高级组），然后通过CLI或API在它们之间自由切换。
+
+### 配置格式
+
+在您的 `~/.claude-code-router/config.json` 文件中添加 `RouterGroups` 部分：
+
+```json
+{
+  "Providers": [
+    // ... 您的现有提供商配置
+  ],
+  "RouterGroups": {
+    "router1": {
+      "name": "Default Group",
+      "description": "标准路由配置",
+      "default": "deepseek,deepseek-chat",
+      "background": "ollama,qwen2.5-coder:latest",
+      "think": "deepseek,deepseek-reasoner",
+      "longContext": "openrouter,google/gemini-2.5-pro-preview",
+      "longContextThreshold": 60000,
+      "webSearch": "gemini,gemini-2.5-flash"
+    },
+    "router2": {
+      "name": "Performance Group",
+      "description": "针对快速响应优化",
+      "default": "ollama,qwen2.5-coder:latest",
+      "background": "ollama,qwen2.5-coder:latest",
+      "think": "gemini,gemini-2.5-flash",
+      "longContext": "gemini,gemini-2.5-pro",
+      "longContextThreshold": 30000,
+      "webSearch": "gemini,gemini-2.5-flash"
+    },
+    "router3": {
+      "name": "Premium Group", 
+      "description": "复杂任务的高质量模型",
+      "default": "openrouter,anthropic/claude-sonnet-4",
+      "background": "openrouter,anthropic/claude-3.5-sonnet",
+      "think": "openrouter,anthropic/claude-3.7-sonnet:thinking",
+      "longContext": "openrouter,google/gemini-2.5-pro-preview",
+      "longContextThreshold": 100000,
+      "webSearch": "openrouter,google/gemini-2.5-pro-preview"
+    }
+  },
+  "Router": {
+    "activeGroup": "router1"
+  }
+  // ... 其他配置
+}
+```
+
+### CLI 使用方法
+
+#### 启动路由组管理界面
+
+```bash
+ccr router
+```
+
+#### 交互式操作
+
+启动后您将看到类似以下的界面：
+
+```
+🚦 Claude Code Router - Router Group Management
+================================================
+
+Current Active Group: router1
+
+Available Router Groups:
+========================
+● 1. Default Group (router1)
+   Description: 标准路由配置
+   
+📋 Router Group Details:
+Name: Default Group
+Description: 标准路由配置
+
+Router Configuration:
+  Default: deepseek,deepseek-chat
+  Background: ollama,qwen2.5-coder:latest
+  Think: deepseek,deepseek-reasoner
+  Long Context: openrouter,google/gemini-2.5-pro-preview
+  Web Search: gemini,gemini-2.5-flash
+  Long Context Threshold: 60000 tokens
+
+  2. Performance Group (router2)
+   Description: 针对快速响应优化
+  3. Premium Group (router3)
+   Description: 复杂任务的高质量模型
+
+Options:
+1-3: Switch to router group
+d: Show details for a group
+r: Refresh/reload configuration
+q: Quit
+
+Select an option:
+```
+
+#### 可用操作
+
+- **1-N**: 切换到对应编号的路由组
+- **d**: 显示特定路由组的详细配置
+- **r**: 刷新配置（重新从配置文件加载）
+- **q**: 退出管理界面
+
+### API 使用方法
+
+#### 获取路由组列表
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     http://localhost:3456/api/router-groups
+```
+
+#### 切换路由组
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"groupId": "router2"}' \
+     http://localhost:3456/api/router-groups/switch
+```
+
+#### 获取特定路由组详情
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     http://localhost:3456/api/router-groups/router1
+```
+
+详细文档请参阅 [ROUTER_GROUPS_GUIDE.md](ROUTER_GROUPS_GUIDE.md)。
 
 ## 📝 深入阅读
 

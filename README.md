@@ -12,6 +12,12 @@
 - **Multi-Provider Support**: Supports various model providers like OpenRouter, DeepSeek, Ollama, Gemini, Volcengine, and SiliconFlow.
 - **Request/Response Transformation**: Customize requests and responses for different providers using transformers.
 - **Dynamic Model Switching**: Switch models on-the-fly within Claude Code using the `/model` command.
+- **🔥 Hot Configuration Reload**: Update configurations without restarting the service - changes take effect automatically!
+- **📋 Version Management**: Track configuration changes with automatic versioning and rollback capabilities.
+- **🛡️ Smart Validation**: Comprehensive configuration validation with provider connectivity testing.
+- **⚡ Zero Downtime Updates**: Apply configuration changes seamlessly without service interruption.
+- **🔄 Dynamic Router Groups**: Switch between different routing configurations at runtime without restarting the service.
+- **🎛️ Interactive Router Management**: Manage router groups via CLI interface or REST API.
 - **GitHub Actions Integration**: Trigger Claude Code tasks in your GitHub workflows.
 - **Plugin System**: Extend functionality with custom transformers.
 
@@ -470,6 +476,200 @@ jobs:
 > **Note**: When running in GitHub Actions or other automation environments, make sure to set `"NON_INTERACTIVE_MODE": true` in your configuration to prevent the process from hanging due to stdin handling issues.
 
 This setup allows for interesting automations, like running tasks during off-peak hours to reduce API costs.
+
+## 🔥 Dynamic Configuration Updates
+
+Claude Code Router now supports **hot configuration reloading** - update your configurations without restarting the service! This powerful feature includes:
+
+### Key Features
+
+- **🔄 Automatic File Watching**: Changes to `config.json` are detected and applied automatically within 500ms
+- **🛡️ Smart Validation**: New configurations are validated before being applied, preventing invalid settings
+- **📋 Version Management**: Automatic versioning with rollback capabilities (keeps last 10 versions)
+- **⚡ Zero Downtime**: Configuration updates don't interrupt ongoing requests
+- **🔍 Health Monitoring**: Continuous provider connectivity and configuration health checks
+
+### Quick Example
+
+1. **Edit your configuration** (`~/.claude-code-router/config.json`):
+   ```json
+   {
+     "Providers": [
+       {
+         "name": "newprovider",
+         "api_base_url": "https://api.example.com/v1/chat/completions",
+         "api_key": "sk-your-new-key",
+         "models": ["new-model"]
+       }
+     ],
+     "Router": {
+       "default": "newprovider,new-model"
+     }
+   }
+   ```
+
+2. **Save the file** - Changes are automatically detected and applied!
+
+3. **Check status**:
+   ```bash
+   curl -H "Authorization: Bearer your-secret-key" \
+        http://localhost:3456/api/config/status
+   ```
+
+### API Endpoints
+
+- `GET /api/config/status` - Get current router status and version
+- `POST /api/config/hot-reload` - Manually trigger configuration reload
+- `POST /api/config/validate` - Validate configuration without applying
+- `GET /api/config/versions` - View configuration version history
+- `POST /api/config/rollback` - Rollback to a previous version
+- `GET /api/config/diff/:from/:to` - Compare configuration versions
+
+### Testing
+
+Run the included test suite to verify dynamic routing functionality:
+
+```bash
+node examples/dynamic-router-test.js
+```
+
+For detailed documentation, see [DYNAMIC_ROUTER.md](DYNAMIC_ROUTER.md).
+
+## 🔄 Dynamic Router Groups
+
+Router Groups allow you to switch between different routing configurations at runtime without restarting the service. You can pre-configure multiple routing strategies (e.g., default group, performance group, premium group) and freely switch between them via CLI or API.
+
+### Configuration Format
+
+Add the `RouterGroups` section to your `~/.claude-code-router/config.json` file:
+
+```json
+{
+  "Providers": [
+    // ... your existing providers configuration
+  ],
+  "RouterGroups": {
+    "router1": {
+      "name": "Default Group",
+      "description": "Standard routing configuration",
+      "default": "deepseek,deepseek-chat",
+      "background": "ollama,qwen2.5-coder:latest",
+      "think": "deepseek,deepseek-reasoner",
+      "longContext": "openrouter,google/gemini-2.5-pro-preview",
+      "longContextThreshold": 60000,
+      "webSearch": "gemini,gemini-2.5-flash"
+    },
+    "router2": {
+      "name": "Performance Group",
+      "description": "Optimized for fast responses",
+      "default": "ollama,qwen2.5-coder:latest",
+      "background": "ollama,qwen2.5-coder:latest",
+      "think": "gemini,gemini-2.5-flash",
+      "longContext": "gemini,gemini-2.5-pro",
+      "longContextThreshold": 30000,
+      "webSearch": "gemini,gemini-2.5-flash"
+    },
+    "router3": {
+      "name": "Premium Group", 
+      "description": "High-quality models for complex tasks",
+      "default": "openrouter,anthropic/claude-sonnet-4",
+      "background": "openrouter,anthropic/claude-3.5-sonnet",
+      "think": "openrouter,anthropic/claude-3.7-sonnet:thinking",
+      "longContext": "openrouter,google/gemini-2.5-pro-preview",
+      "longContextThreshold": 100000,
+      "webSearch": "openrouter,google/gemini-2.5-pro-preview"
+    }
+  },
+  "Router": {
+    "activeGroup": "router1"
+  }
+  // ... other configuration
+}
+```
+
+### CLI Usage
+
+#### Launch Router Group Management Interface
+
+```bash
+ccr router
+```
+
+#### Interactive Operations
+
+After launching, you'll see an interface like this:
+
+```
+🚦 Claude Code Router - Router Group Management
+================================================
+
+Current Active Group: router1
+
+Available Router Groups:
+========================
+● 1. Default Group (router1)
+   Description: Standard routing configuration
+   
+📋 Router Group Details:
+Name: Default Group
+Description: Standard routing configuration
+
+Router Configuration:
+  Default: deepseek,deepseek-chat
+  Background: ollama,qwen2.5-coder:latest
+  Think: deepseek,deepseek-reasoner
+  Long Context: openrouter,google/gemini-2.5-pro-preview
+  Web Search: gemini,gemini-2.5-flash
+  Long Context Threshold: 60000 tokens
+
+  2. Performance Group (router2)
+   Description: Optimized for fast responses
+  3. Premium Group (router3)
+   Description: High-quality models for complex tasks
+
+Options:
+1-3: Switch to router group
+d: Show details for a group
+r: Refresh/reload configuration
+q: Quit
+
+Select an option:
+```
+
+#### Available Operations
+
+- **1-N**: Switch to the corresponding numbered router group
+- **d**: Show detailed configuration for a specific group
+- **r**: Refresh configuration (reload from config file)
+- **q**: Quit the management interface
+
+### API Usage
+
+#### Get Router Groups List
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     http://localhost:3456/api/router-groups
+```
+
+#### Switch Router Group
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"groupId": "router2"}' \
+     http://localhost:3456/api/router-groups/switch
+```
+
+#### Get Specific Router Group Details
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     http://localhost:3456/api/router-groups/router1
+```
+
+For detailed documentation on Router Groups, see [ROUTER_GROUPS_GUIDE.md](ROUTER_GROUPS_GUIDE.md).
 
 ## 📝 Further Reading
 
