@@ -13,6 +13,7 @@ import {
   savePid,
 } from "./utils/processCheck";
 import { CONFIG_FILE } from "./constants";
+import { dynamicRouterMiddleware } from "./utils/dynamicRouterMiddleware";
 
 async function initializeClaudeConfig() {
   const homeDir = homedir();
