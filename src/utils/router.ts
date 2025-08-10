@@ -125,6 +125,7 @@ const getUseModel = async (req: any, tokenCount: number, config: any) => {
   return config.Router!.default;
 };
 
+
 export const router = async (req: any, _res: any, config: any) => {
   const { messages, system = [], tools }: MessageCreateParamsBase = req.body;
   try {
@@ -147,6 +148,7 @@ export const router = async (req: any, _res: any, config: any) => {
     if (!model) {
       model = await getUseModel(req, tokenCount, config);
     }
+
     req.body.model = model;
   } catch (error: any) {
     log("Error in router middleware:", error.message);

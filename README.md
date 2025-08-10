@@ -15,6 +15,42 @@
 - **GitHub Actions Integration**: Trigger Claude Code tasks in your GitHub workflows.
 - **Plugin System**: Extend functionality with custom transformers.
 
+## ✨ Anthropic Passthrough Support
+
+The router now supports two backend formats:
+- **OpenAI Format**: Converts Anthropic requests to OpenAI-compatible format (default)
+- **Anthropic Format**: Directly passes through original Anthropic requests (new feature)
+
+### Configuration
+
+Use `anthropicPassthrough` transformer to enable Anthropic passthrough mode:
+
+```json
+{
+  "Providers": [
+    {
+      "name": "openai",
+      "api_base_url": "https://api.openai.com/v1",
+      "api_key": "your-openai-api-key",
+      "models": ["gpt-4o", "gpt-4o-mini"]
+    },
+    {
+      "name": "anthropic-official",
+      "api_base_url": "https://api.anthropic.com",
+      "api_key": "your-anthropic-api-key",
+      "models": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
+      "transformer": {
+        "use": ["anthropicPassthrough"]
+      }
+    }
+  ]
+}
+```
+
+**API URL Configuration:**
+- **Basic URL (recommended)**: `"https://api.anthropic.com"` → auto-adds `/v1/messages`
+- **Full URL**: `"https://api.example.com/v1/messages"` → uses as-is
+
 ## 🚀 Getting Started
 
 ### 1. Installation
@@ -260,7 +296,7 @@ Transformers allow you to modify the request and response payloads to ensure com
 
 **Available Built-in Transformers:**
 
-- `Anthropic`:If you use only the `Anthropic` transformer, it will preserve the original request and response parameters(you can use it to connect directly to an Anthropic endpoint).
+- `anthropicpassthrough`: Enables direct passthrough to Anthropic API without format conversion.
 - `deepseek`: Adapts requests/responses for DeepSeek API.
 - `gemini`: Adapts requests/responses for Gemini API.
 - `openrouter`: Adapts requests/responses for OpenRouter API. It can also accept a `provider` routing parameter to specify which underlying providers OpenRouter should use. For more details, refer to the [OpenRouter documentation](https://openrouter.ai/docs/features/provider-routing). See an example below:
