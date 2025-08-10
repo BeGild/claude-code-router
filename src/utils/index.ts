@@ -64,6 +64,7 @@ export const readConfigFile = async () => {
       const APIKEY = await question("Enter Provider API KEY: ");
       const baseUrl = await question("Enter Provider URL: ");
       const model = await question("Enter MODEL Name: ");
+
       const config = Object.assign({}, DEFAULT_CONFIG, {
         Providers: [
           {
