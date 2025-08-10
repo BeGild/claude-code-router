@@ -29,7 +29,7 @@ The router now supports two backend formats:
 
 ### Configuration
 
-Use `anthropicPassthrough` transformer to enable Anthropic passthrough mode:
+Use `anthropicpassthrough` transformer to enable Anthropic passthrough mode:
 
 ```json
 {
@@ -46,7 +46,7 @@ Use `anthropicPassthrough` transformer to enable Anthropic passthrough mode:
       "api_key": "your-anthropic-api-key",
       "models": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
       "transformer": {
-        "use": ["anthropicPassthrough"]
+        "use": ["anthropicpassthrough"]
       }
     }
   ]
