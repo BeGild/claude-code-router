@@ -1,11 +1,10 @@
-import './polyfill';
 import { existsSync } from "fs";
 import { writeFile } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
 import { initConfig, initDir } from "./utils";
 import { createServer } from "./server";
-import { dynamicRouterMiddleware } from "./utils/dynamicRouterMiddleware";
+import { router } from "./utils/router";
 import { apiKeyAuth } from "./middleware/auth";
 import {
   cleanupPidFile,

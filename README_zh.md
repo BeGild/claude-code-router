@@ -26,27 +26,27 @@
 - **OpenAI 格式**: 将 Anthropic 请求转换为 OpenAI 兼容格式（默认）
 - **Anthropic 格式**: 直接透传原始 Anthropic 请求到后端（新功能）
 
+
 ### 配置方法
 
-使用 `anthropicpassthrough` transformer 来启用 Anthropic 直通模式：
+在 Provider 配置中添加 `type` 字段：
 
 ```json
 {
   "Providers": [
     {
       "name": "openai",
+      "type": "openai",
       "api_base_url": "https://api.openai.com/v1",
       "api_key": "your-openai-api-key",
       "models": ["gpt-4o", "gpt-4o-mini"]
     },
     {
       "name": "anthropic-official",
+      "type": "anthropic",
       "api_base_url": "https://api.anthropic.com",
       "api_key": "your-anthropic-api-key",
-      "models": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
-      "transformer": {
-        "use": ["anthropicpassthrough"]
-      }
+      "models": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"]
     }
   ]
 }
@@ -297,7 +297,6 @@ Transformers 允许您修改请求和响应负载，以确保与不同提供商 
 
 **可用的内置 Transformer：**
 
--   `anthropicpassthrough`: 启用 Anthropic API 直通模式，不进行格式转换。
 -   `deepseek`: 适配 DeepSeek API 的请求/响应。
 -   `gemini`: 适配 Gemini API 的请求/响应。
 -   `openrouter`: 适配 OpenRouter API 的请求/响应。它还可以接受一个 `provider` 路由参数，以指定 OpenRouter 应使用哪些底层提供商。有关更多详细信息，请参阅 [OpenRouter 文档](https://openrouter.ai/docs/features/provider-routing)。请参阅下面的示例：
