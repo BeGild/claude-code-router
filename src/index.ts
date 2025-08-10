@@ -6,6 +6,7 @@ import { initConfig, initDir } from "./utils";
 import { createServer } from "./server";
 import { router } from "./utils/router";
 import { apiKeyAuth } from "./middleware/auth";
+import { anthropicPassthrough } from "./middleware/anthropicPassthrough";
 import {
   cleanupPidFile,
   isServiceRunning,
